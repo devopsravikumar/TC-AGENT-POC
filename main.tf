@@ -13,7 +13,7 @@ resource "google_compute_instance" "teamcity_vm" {
 
   boot_disk {
     initialize_params {
-      image = "projects/windows-cloud/global/images/windows-server-2022-dc-v20240514"
+      image = "windows-cloud/windows-server-2022-dc"
       size  = 100
     }
   }
