@@ -6,13 +6,13 @@ variable "project_id" {
 variable "region" {
   description = "The GCP region"
   type        = string
-  default     = "us-east4"
+  default     = "us-central1"
 }
 
 variable "zone" {
   description = "The GCP zone"
   type        = string
-  default     = "us-east4-a"
+  default     = "us-central1-a"
 }
 
 variable "service_account_email" {
