@@ -1,7 +1,9 @@
 name: Install Docker + TeamCity Server + Agent
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+     - tc-agent-poc
 
 jobs:
   install-teamcity:
