@@ -1,9 +1,9 @@
 name: Install Docker + TeamCity Server + Agent
 
-# on:
-#   push:
-#     branches:
-#      - tc-agent-poc
+on:
+  push:
+    branches:
+     - tc-agent-poc
 
 jobs:
   install-teamcity:
