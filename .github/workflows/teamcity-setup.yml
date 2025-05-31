@@ -1,7 +1,9 @@
 name: TeamCity Deploy via GCS
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+     - tc-agent-poc
 
 jobs:
   upload-compose-and-trigger:
