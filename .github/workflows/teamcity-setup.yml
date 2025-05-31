@@ -27,7 +27,7 @@ jobs:
       - name: Authenticate to GCP using WIF
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: 'projects/315696147629/locations/global/workloadIdentityPools/gha-pool/providers/github'
+          workload_identity_provider: 'projects/315696147629/locations/global/workloadIdentityPools/gha-pool/providers/github-actions'
           service_account: 'gha-runner-sa@teamcity-windows-poc.iam.gserviceaccount.com'
 
       - name: Set up gcloud CLI
