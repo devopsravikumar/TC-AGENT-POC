@@ -1,5 +1,11 @@
 # install-docker-ce.ps1
-# Script to install Docker CE on Windows Server
+# Robust, non-interactive Docker CE install for Windows Server via WinRM/CI
+
+$ProgressPreference      = 'SilentlyContinue'
+$ConfirmPreference       = 'None'
+$ErrorActionPreference   = 'Stop'
+
+Write-Host "`n=== Installing Docker on Windows Server ===`n"
 
 # Ensure script runs as Administrator
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator"))
@@ -8,19 +14,21 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
     exit 1
 }
 
-Write-Host "`n=== Installing Docker on Windows Server ===`n"
-
-# Set TLS12 as security protocol (fix for older systems)
+# Set TLS12 as security protocol (for PowerShell Gallery access)
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 # Install DockerMsftProvider if not present
 if (-not (Get-Module -ListAvailable -Name DockerMsftProvider)) {
-    Install-Module -Name DockerMsftProvider -Repository PSGallery -Force
+    Write-Host "Installing DockerMsftProvider..."
+    Install-Module -Name DockerMsftProvider -Repository PSGallery -Force -Confirm:$false
+} else {
+    Write-Host "DockerMsftProvider is already installed."
 }
 
-# Install Docker (ignore warning if already installed)
+# Install Docker if not already present
 if (-not (Get-Package -Name docker -ErrorAction SilentlyContinue)) {
-    Install-Package -Name docker -ProviderName DockerMsftProvider -Force
+    Write-Host "Installing Docker..."
+    Install-Package -Name docker -ProviderName DockerMsftProvider -Force -ForceBootstrap -Confirm:$false
 } else {
     Write-Host "Docker is already installed. Skipping install."
 }
@@ -40,6 +48,10 @@ if (-not (Get-LocalGroupMember -Group docker-users -Member $user -ErrorAction Si
 
 # Confirm installation
 Write-Host "`nDocker version:"
-docker version
+try {
+    docker version
+} catch {
+    Write-Warning "Docker is installed, but could not run 'docker version'. You may need to log off and back in for group membership to take effect."
+}
 
 Write-Host "`n=== Docker installation complete! ===`n"
