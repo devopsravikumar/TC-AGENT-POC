@@ -11,7 +11,7 @@ jobs:
 
     env:
       GCP_ZONE: us-central1-a
-      GCS_BUCKET: tc-agent-poc  # <-- CHANGE THIS TO YOUR BUCKET NAME
+      GCS_BUCKET: tc-agent-poc  # <-- CHANGE THIS TO YOUR BUCKET NAME/NAMES
 
     steps:
       - name: Checkout repository
