@@ -1,5 +1,5 @@
 # install-docker-ce.ps1
-# Robust, non-interactive Docker CE install for Windows Server via WinRM/CI
+# Fully non-interactive Docker install for Windows Server via WinRM/CI
 
 $ProgressPreference      = 'SilentlyContinue'
 $ConfirmPreference       = 'None'
@@ -16,6 +16,14 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 
 # Set TLS12 as security protocol (for PowerShell Gallery access)
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+# PREVENT ShouldContinue for NuGet/Provider
+Write-Host "Ensuring NuGet provider is installed (non-interactive)..."
+$provider = Get-PackageProvider -Name NuGet -ErrorAction SilentlyContinue
+if (-not $provider) {
+    Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope AllUsers
+}
+Set-PSRepository -Name 'PSGallery' -InstallationPolicy Trusted
 
 # Install DockerMsftProvider if not present
 if (-not (Get-Module -ListAvailable -Name DockerMsftProvider)) {
