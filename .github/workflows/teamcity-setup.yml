@@ -1,9 +1,7 @@
-name: Setup Docker and TeamCity Server+Agent on GCP VM
+name: Setup Docker and TeamCity Server+Agent on GCP VM via WinRM
 
 on:
-  push:
-    branches:
-     - tc-agent-poc
+  workflow_dispatch:
 
 env:
   PROJECT_ID: teamcity-windows-poc
@@ -12,7 +10,7 @@ env:
   DOCKER_PS1: install-docker.ps1
   TC_INSTALLER: installation-files_2023.11.5_TeamCity-2023.11.5.exe
 
-jobs: 
+jobs:
   setup-teamcity:
     runs-on: ubuntu-latest
     permissions:
@@ -22,7 +20,7 @@ jobs:
       - name: Authenticate to GCP using WIF
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: 'projects/315696147629/locations/global/workloadIdentityPools/gha-pool/providers/github-actions'
+          workload_identity_provider: 'projects/TEAMCITY_PROJECT_NUMBER/locations/global/workloadIdentityPools/github-pool/providers/github'
           service_account: 'gha-runner-sa@teamcity-windows-poc.iam.gserviceaccount.com'
 
       - name: Set up gcloud CLI
@@ -47,45 +45,47 @@ jobs:
         run: |
           gsutil cp gs://$GCS_BUCKET/$TC_INSTALLER .
 
-      - name: Copy install-docker.ps1 to VM
-        uses: appleboy/scp-action@master
-        with:
-          host: ${{ env.VM_IP }}
-          username: ${{ secrets.WINDOWS_USERNAME }}
-          password: ${{ secrets.WINDOWS_PASSWORD }}
-          port: 22
-          source: "install-docker.ps1"
-          target: "C:\\Users\\${{ secrets.WINDOWS_USERNAME }}\\Desktop"
+      - name: Install PowerShell modules for WinRM
+        run: |
+          pwsh -Command "Install-Module -Name PSWSMan -Force -Scope CurrentUser"
+          pwsh -Command "Install-Module -Name Posh-SSH -Force -Scope CurrentUser"
+          pwsh -Command "Install-Module -Name PSRemoting -Force -Scope CurrentUser"
 
-      - name: Copy TeamCity Installer to VM
-        uses: appleboy/scp-action@master
-        with:
-          host: ${{ env.VM_IP }}
-          username: ${{ secrets.WINDOWS_USERNAME }}
-          password: ${{ secrets.WINDOWS_PASSWORD }}
-          port: 22
-          source: "${{ env.TC_INSTALLER }}"
-          target: "C:\\Users\\${{ secrets.WINDOWS_USERNAME }}\\Desktop"
+      - name: Copy install-docker.ps1 to VM via WinRM
+        shell: pwsh
+        run: |
+          $secpasswd = ConvertTo-SecureString "${{ secrets.WINDOWS_PASSWORD }}" -AsPlainText -Force
+          $cred = New-Object System.Management.Automation.PSCredential ("${{ secrets.WINDOWS_USERNAME }}", $secpasswd)
+          $session = New-PSSession -ComputerName $env:VM_IP -Credential $cred -Authentication Basic -UseSSL:$false -Port 5985
+          Copy-Item -Path "./${{ env.DOCKER_PS1 }}" -Destination "C:\Users\${{ secrets.WINDOWS_USERNAME }}\Desktop" -ToSession $session
+          Remove-PSSession $session
 
-      - name: Install Docker on VM
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ env.VM_IP }}
-          username: ${{ secrets.WINDOWS_USERNAME }}
-          password: ${{ secrets.WINDOWS_PASSWORD }}
-          port: 22
-          script: |
-            powershell.exe -ExecutionPolicy Bypass -File "C:\\Users\\${{ secrets.WINDOWS_USERNAME }}\\Desktop\\install-docker.ps1"
+      - name: Copy TeamCity Installer to VM via WinRM
+        shell: pwsh
+        run: |
+          $secpasswd = ConvertTo-SecureString "${{ secrets.WINDOWS_PASSWORD }}" -AsPlainText -Force
+          $cred = New-Object System.Management.Automation.PSCredential ("${{ secrets.WINDOWS_USERNAME }}", $secpasswd)
+          $session = New-PSSession -ComputerName $env:VM_IP -Credential $cred -Authentication Basic -UseSSL:$false -Port 5985
+          Copy-Item -Path "./${{ env.TC_INSTALLER }}" -Destination "C:\Users\${{ secrets.WINDOWS_USERNAME }}\Desktop" -ToSession $session
+          Remove-PSSession $session
 
-      - name: Install TeamCity Server (silent install)
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ env.VM_IP }}
-          username: ${{ secrets.WINDOWS_USERNAME }}
-          password: ${{ secrets.WINDOWS_PASSWORD }}
-          port: 22
-          script: |
-            powershell.exe -Command "Start-Process -FilePath 'C:\\Users\\${{ secrets.WINDOWS_USERNAME }}\\Desktop\\installation-files_2023.11.5_TeamCity-2023.11.5.exe' -ArgumentList '/S' -Wait"
+      - name: Run install-docker.ps1 via WinRM
+        shell: pwsh
+        run: |
+          $secpasswd = ConvertTo-SecureString "${{ secrets.WINDOWS_PASSWORD }}" -AsPlainText -Force
+          $cred = New-Object System.Management.Automation.PSCredential ("${{ secrets.WINDOWS_USERNAME }}", $secpasswd)
+          Invoke-Command -ComputerName $env:VM_IP -Credential $cred -Authentication Basic -UseSSL:$false -Port 5985 -ScriptBlock { 
+            powershell.exe -ExecutionPolicy Bypass -File "C:\Users\${{ secrets.WINDOWS_USERNAME }}\Desktop\install-docker.ps1" 
+          }
+
+      - name: Run TeamCity Installer via WinRM
+        shell: pwsh
+        run: |
+          $secpasswd = ConvertTo-SecureString "${{ secrets.WINDOWS_PASSWORD }}" -AsPlainText -Force
+          $cred = New-Object System.Management.Automation.PSCredential ("${{ secrets.WINDOWS_USERNAME }}", $secpasswd)
+          Invoke-Command -ComputerName $env:VM_IP -Credential $cred -Authentication Basic -UseSSL:$false -Port 5985 -ScriptBlock { 
+            Start-Process -FilePath "C:\Users\${{ secrets.WINDOWS_USERNAME }}\Desktop\installation-files_2023.11.5_TeamCity-2023.11.5.exe" -ArgumentList "/S" -Wait 
+          }
 
       - name: Done
-        run: echo "Docker and TeamCity setup complete!"
+        run: echo "Docker and TeamCity setup complete via WinRM!"
