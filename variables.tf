@@ -19,3 +19,8 @@ variable "service_account_email" {
   description = "Service account email for the VM"
   type        = string
 }
+
+variable "password" {
+  description = "Service account email for the VM"
+  type        = string
+}

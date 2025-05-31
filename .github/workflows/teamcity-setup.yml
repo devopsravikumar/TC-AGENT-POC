@@ -9,38 +9,50 @@ jobs:
   install-teamcity:
     runs-on: windows-latest
 
+    env:
+      GCP_ZONE: us-central1-a
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # Authenticate to Google Cloud using service account key
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v1
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
+      # Install gcloud CLI
       - name: Setup gcloud CLI
         uses: google-github-actions/setup-gcloud@v1
 
+      # Optional: List VMs for debug
+      - name: List all VMs in project/zone
+        run: |
+          gcloud compute instances list --filter="name=('teamcity-vm')"
+
+      # Get TeamCity VM External IP
       - name: Get TeamCity VM External IP
         id: get_ip
+        shell: pwsh
         run: |
-          $ip = (gcloud compute instances describe teamcity-vm --zone=${{ secrets.GCP_ZONE }} `
-                --format="value(networkInterfaces[0].accessConfigs[0].natIP)")
-          echo "ip=$ip" >> $env:GITHUB_OUTPUT
+          $ip = (gcloud compute instances describe teamcity-vm --zone=${{ env.GCP_ZONE }} --format="value(networkInterfaces[0].accessConfigs[0].natIP)")
+          echo "ip=$ip" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
-      # ---- OPTIONAL: Copy Compose file to VM over SMB ----
+      # Copy Docker Compose file to VM using SMB (requires firewall/SMB enabled)
       - name: Copy Docker Compose File to VM
+        shell: pwsh
         run: |
           $vmIp = "${{ steps.get_ip.outputs.ip }}"
           $user = "Administrator"
           $password = "${{ secrets.WINDOWS_VM_PASSWORD }}"
 
-          # Map admin share (requires firewall and SMB to be enabled)
           net use \\$vmIp\C$ $password /user:$user
           copy .\teamcity-compose.yml \\$vmIp\C$\teamcity-compose.yml
 
-      # ---- OPTIONAL: Run Docker Compose on remote VM using SchTasks ----
+      # Run Docker Compose on VM (via SchTasks)
       - name: Run Docker Compose on VM (using SchTasks)
+        shell: pwsh
         run: |
           $vmIp = "${{ steps.get_ip.outputs.ip }}"
           $user = "Administrator"
@@ -50,9 +62,10 @@ jobs:
             /TR "powershell -Command 'docker compose -f C:\teamcity-compose.yml up -d'" `
             /SC ONCE /ST 00:00 /F
 
-      # ---- OPTIONAL: Clean up mapped drive ----
+      # Clean up admin share mapping
       - name: Clean up admin share mapping
         if: always()
+        shell: pwsh
         run: |
           $vmIp = "${{ steps.get_ip.outputs.ip }}"
           net use \\$vmIp\C$ /delete
