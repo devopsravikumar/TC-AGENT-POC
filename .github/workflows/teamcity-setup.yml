@@ -1,7 +1,9 @@
 name: Setup Docker and TeamCity Server+Agent on GCP VM
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+     - tc-agent-poc
 
 env:
   PROJECT_ID: teamcity-windows-poc
