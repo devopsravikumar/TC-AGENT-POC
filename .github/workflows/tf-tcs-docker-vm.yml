@@ -48,16 +48,16 @@ jobs:
     #   - name: Download TeamCity Installer from GCS
     #     run: gsutil cp gs://%GCS_BUCKET%/%TC_INSTALLER% .
 
-    #   - name: Enable unencrypted WinRM on client
-    #     shell: pwsh
-    #     run: |
-    #       Set-Item -Path WSMan:\localhost\Client\AllowUnencrypted -Value true
-    #       Set-Item -Path WSMan:\localhost\Client\Auth\Basic -Value true
+      - name: Enable unencrypted WinRM on client
+        shell: pwsh
+        run: |
+          Set-Item -Path WSMan:\localhost\Client\AllowUnencrypted -Value true
+          Set-Item -Path WSMan:\localhost\Client\Auth\Basic -Value true
 
-    #   - name: Add target VM to TrustedHosts
-    #     shell: pwsh
-    #     run: |
-    #       Set-Item -Path WSMan:\localhost\Client\TrustedHosts -Value $env:VM_IP -Force
+      - name: Add target VM to TrustedHosts
+        shell: pwsh
+        run: |
+          Set-Item -Path WSMan:\localhost\Client\TrustedHosts -Value $env:VM_IP -Force
 
       - name: Copy install-docker-ce.ps1 to VM via WinRM
         shell: pwsh
