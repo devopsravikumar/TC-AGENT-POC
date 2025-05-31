@@ -14,11 +14,11 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      # Checkout the repository (if needed for scripts or context)
+      # 1. Checkout the repo (if needed for scripts/config)
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      # Authenticate to GCP using Workload Identity Federation (OIDC)
+      # 2. Authenticate to GCP using Workload Identity Federation (OIDC)
       - name: Authenticate to GCP using WIF
         id: auth
         uses: google-github-actions/auth@v2
@@ -26,39 +26,51 @@ jobs:
           workload_identity_provider: 'projects/315696147629/locations/global/workloadIdentityPools/gha-pool/providers/github-actions'
           service_account: 'gha-runner-sa@teamcity-windows-poc.iam.gserviceaccount.com'
 
-      # Ensure Google Cloud SDK/gsutil is available, install if missing
+      # 3. Ensure Google Cloud SDK/gsutil is available
       - name: Ensure Google Cloud SDK & gsutil available
         shell: pwsh
         run: |
           # Check for gsutil
-          if (-not (Get-Command gsutil -ErrorAction SilentlyContinue)) {
+          $gcloudBin = "C:\Program Files (x86)\Google\Cloud SDK\google-cloud-sdk\bin"
+          $gsutilCmd = Join-Path $gcloudBin "gsutil.cmd"
+          if (-not (Test-Path $gsutilCmd)) {
             Write-Host "Google Cloud SDK (gsutil) not found. Installing..."
             Invoke-WebRequest -Uri "https://dl.google.com/dl/cloudsdk/channels/rapid/GoogleCloudSDKInstaller.exe" -OutFile "$env:TEMP\GoogleCloudSDKInstaller.exe"
             Start-Process -FilePath "$env:TEMP\GoogleCloudSDKInstaller.exe" -ArgumentList "/S" -Wait
-            # Add to PATH for this session
-            $gcloudPath = "C:\Program Files (x86)\Google\Cloud SDK\google-cloud-sdk\bin"
-            $env:Path += ";$gcloudPath"
+            if (-not (Test-Path $gsutilCmd)) {
+              throw "gsutil not found after install at $gsutilCmd"
+            }
           } else {
             Write-Host "Google Cloud SDK (gsutil) is already available."
           }
 
-      # Download Mirantis Container Runtime offline installer from GCS
+      # 4. Download Mirantis Container Runtime offline installer from GCS
       - name: Download MCR Offline Installer from GCS
         shell: pwsh
         run: |
+          $gcloudBin = "C:\Program Files (x86)\Google\Cloud SDK\google-cloud-sdk\bin"
+          $gsutilCmd = Join-Path $gcloudBin "gsutil.cmd"
+          if (-not (Test-Path $gsutilCmd)) {
+            throw "gsutil not found at $gsutilCmd"
+          }
           $bucketPath = "gs://tc-agent-poc/mcr-offline"
           $localFolder = "$env:RUNNER_TEMP\mcr-offline"
-          gsutil -m cp -r "$bucketPath/*" $localFolder
+          & $gsutilCmd -m cp -r "$bucketPath/*" $localFolder
 
-    #   # Download TeamCity installer from GCS
+    #   # 5. Download TeamCity installer from GCS
     #   - name: Download TeamCity Installer from GCS
     #     shell: pwsh
     #     run: |
+    #       $gcloudBin = "C:\Program Files (x86)\Google\Cloud SDK\google-cloud-sdk\bin"
+    #       $gsutilCmd = Join-Path $gcloudBin "gsutil.cmd"
+    #       if (-not (Test-Path $gsutilCmd)) {
+    #         throw "gsutil not found at $gsutilCmd"
+    #       }
     #       $bucketPath = "gs://tc-agent-poc/teamcity-installer"
     #       $localFolder = "$env:RUNNER_TEMP\teamcity-installer"
-    #       gsutil -m cp -r "$bucketPath/*" $localFolder
+    #       & $gsutilCmd -m cp -r "$bucketPath/*" $localFolder
 
-      # Copy both installers to the remote Windows VM via SMB share (admin share)
+      # 6. Copy installers to remote Windows VM via SMB
       - name: Copy to Remote Windows VM (SMB)
         shell: pwsh
         env:
@@ -78,7 +90,7 @@ jobs:
           Copy-Item -Path "$env:RUNNER_TEMP\teamcity-installer\*" -Destination "Z:\teamcity-installer" -Recurse -Force
           Remove-PSDrive -Name Z
 
-      # Remotely trigger the MCR offline installer via PsExec
+      # 7. Trigger MCR install on remote VM (PsExec)
       - name: Trigger MCR Install on Remote VM (PsExec)
         shell: pwsh
         env:
@@ -92,7 +104,7 @@ jobs:
           $remoteVM = $env:REMOTE_VM
           & $psexec \\$remoteVM -u $username -p $password powershell -ExecutionPolicy Bypass -File "C:\mcr-offline\install.ps1" -Offline
 
-      # Remotely trigger the TeamCity installer via PsExec (silent install)
+      # 8. Trigger TeamCity install on remote VM (PsExec)
       - name: Trigger TeamCity Install on Remote VM (PsExec)
         shell: pwsh
         env:
