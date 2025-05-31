@@ -1,9 +1,13 @@
 name: Setup Docker and TeamCity Server+Agent on GCP VM via WinRM
 
-on:
+# on:
   push:
     branches:
      - tc-agent-poc
+
+permissions:
+  contents: read
+  id-token: write
 
 env:
   PROJECT_ID: teamcity-windows-poc
@@ -14,7 +18,7 @@ env:
 
 jobs:
   setup-teamcity:
-    runs-on: windows-latest  # << Change to your self-hosted runner label if needed
+    runs-on: windows-latest
 
     steps:
       - name: Checkout
@@ -33,13 +37,10 @@ jobs:
 
       - name: Get VM External IP
         id: getip
+        shell: pwsh
         run: |
-          gcloud compute instances describe $env:VM_NAME `
-            --project $env:PROJECT_ID `
-            --zone us-central1-a `
-            --format="value(networkInterfaces[0].accessConfigs[0].natIP)" > vmip.txt
-          $vmip = Get-Content vmip.txt
-          echo "VM_IP=$vmip" | Out-File -FilePath $env:GITHUB_ENV -Append
+          $ip = (gcloud compute instances describe $env:VM_NAME --project $env:PROJECT_ID --zone us-central1-a --format="value(networkInterfaces[0].accessConfigs[0].natIP)")
+          echo "VM_IP=$ip" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Download install-docker.ps1 from GCS
         run: gsutil cp gs://%GCS_BUCKET%/%DOCKER_PS1% .
