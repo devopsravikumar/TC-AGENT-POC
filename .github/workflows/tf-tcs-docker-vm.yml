@@ -24,16 +24,16 @@ jobs:
           workload_identity_provider: 'projects/315696147629/locations/global/workloadIdentityPools/gha-pool/providers/github-actions'
           service_account: 'gha-runner-sa@teamcity-windows-poc.iam.gserviceaccount.com'
 
-      - name: Ensure Google Cloud SDK is Installed
-        shell: pwsh
-        run: |
-          if (-not (Get-Command gsutil -ErrorAction SilentlyContinue)) {
-            Write-Host "Google Cloud SDK not found. Installing..."
-            Invoke-WebRequest -Uri "https://dl.google.com/dl/cloudsdk/channels/rapid/GoogleCloudSDKInstaller.exe" -OutFile "$env:USERPROFILE\GoogleCloudSDKInstaller.exe"
-            Start-Process -FilePath "$env:USERPROFILE\GoogleCloudSDKInstaller.exe" -Wait
-          } else {
-            Write-Host "Google Cloud SDK is already installed."
-          }
+    #   - name: Ensure Google Cloud SDK is Installed
+    #     shell: pwsh
+    #     run: |
+    #       if (-not (Get-Command gsutil -ErrorAction SilentlyContinue)) {
+    #         Write-Host "Google Cloud SDK not found. Installing..."
+    #         Invoke-WebRequest -Uri "https://dl.google.com/dl/cloudsdk/channels/rapid/GoogleCloudSDKInstaller.exe" -OutFile "$env:USERPROFILE\GoogleCloudSDKInstaller.exe"
+    #         Start-Process -FilePath "$env:USERPROFILE\GoogleCloudSDKInstaller.exe" -Wait
+    #       } else {
+    #         Write-Host "Google Cloud SDK is already installed."
+    #       }
 
       - name: Download MCR Offline Installer from GCS
         run: |
