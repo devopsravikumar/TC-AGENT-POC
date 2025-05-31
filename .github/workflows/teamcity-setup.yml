@@ -1,48 +1,89 @@
-name: TeamCity Deploy via GCS
+name: Setup Docker and TeamCity Server+Agent on GCP VM
 
 on:
-  push:
-    branches:
-     - tc-agent-poc
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: teamcity-windows-poc
+  VM_NAME: teamcity-vm
+  GCS_BUCKET: tc-agent-poc
+  DOCKER_PS1: install-docker.ps1
+  TC_INSTALLER: installation-files_2023.11.5_TeamCity-2023.11.5.exe
 
 jobs:
-  upload-compose-and-trigger:
+  setup-teamcity:
     runs-on: ubuntu-latest
-
-    env:
-      GCP_ZONE: us-central1-a
-      GCS_BUCKET: tc-agent-poc  # <-- CHANGE THIS TO YOUR BUCKET NAME/NAMES
-
+    permissions:
+      contents: read
+      id-token: write
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v1
+      - name: Authenticate to GCP using WIF
+        uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          workload_identity_provider: 'projects/315696147629/locations/global/workloadIdentityPools/github-pool/providers/github'
+          service_account: 'gha-runner-sa@teamcity-windows-poc.iam.gserviceaccount.com'
 
-      - name: Upload Compose file to GCS
+      - name: Set up gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Get VM External IP
+        id: getip
         run: |
-          gsutil cp ./teamcity-compose.yml gs://${{ env.GCS_BUCKET }}/teamcity-compose.yml
+          gcloud compute instances describe $VM_NAME \
+            --project $PROJECT_ID \
+            --zone us-central1-a \
+            --format="value(networkInterfaces[0].accessConfigs[0].natIP)" > vmip.txt
+          echo "VM_IP=$(cat vmip.txt)" >> $GITHUB_ENV
 
-      - name: Get TeamCity VM External IP
-        id: get_ip
+      - name: Download install-docker.ps1 from GCS
         run: |
-          export IP=$(gcloud compute instances describe teamcity-vm --zone=${GCP_ZONE} --format="value(networkInterfaces[0].accessConfigs[0].natIP)")
-          echo "ip=$IP" >> $GITHUB_OUTPUT
+          gsutil cp gs://$GCS_BUCKET/$DOCKER_PS1 .
 
-      # Optionally: Remotely trigger file download and docker compose on Windows VM via WinRM/SSH
-      # Or, instruct user to run the following on the VM (best for cloud-init/startup.ps1):
-
-      - name: Output VM PowerShell instructions
+      - name: Download TeamCity Installer from GCS
         run: |
-          echo 'On the Windows VM, run the following PowerShell to download and launch TeamCity:'
-          echo ''
-          echo 'gsutil cp gs://${{ env.GCS_BUCKET }}/teamcity-compose.yml C:\teamcity-compose.yml'
-          echo 'docker compose -f C:\teamcity-compose.yml up -d'
-          echo ''
-          echo 'Or, add these to your startup.ps1!'
+          gsutil cp gs://$GCS_BUCKET/$TC_INSTALLER .
 
-      # If you have WinRM configured and want to automate the remote execution, add the relevant WinRM action here.
+      - name: Copy install-docker.ps1 to VM
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ env.VM_IP }}
+          username: ${{ secrets.WINDOWS_USERNAME }}
+          password: ${{ secrets.WINDOWS_PASSWORD }}
+          port: 22
+          source: "install-docker.ps1"
+          target: "C:\\Users\\${{ secrets.WINDOWS_USERNAME }}\\Desktop"
 
+      - name: Copy TeamCity Installer to VM
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ env.VM_IP }}
+          username: ${{ secrets.WINDOWS_USERNAME }}
+          password: ${{ secrets.WINDOWS_PASSWORD }}
+          port: 22
+          source: "${{ env.TC_INSTALLER }}"
+          target: "C:\\Users\\${{ secrets.WINDOWS_USERNAME }}\\Desktop"
+
+      - name: Install Docker on VM
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ env.VM_IP }}
+          username: ${{ secrets.WINDOWS_USERNAME }}
+          password: ${{ secrets.WINDOWS_PASSWORD }}
+          port: 22
+          script: |
+            powershell.exe -ExecutionPolicy Bypass -File "C:\\Users\\${{ secrets.WINDOWS_USERNAME }}\\Desktop\\install-docker.ps1"
+
+      - name: Install TeamCity Server (silent install)
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ env.VM_IP }}
+          username: ${{ secrets.WINDOWS_USERNAME }}
+          password: ${{ secrets.WINDOWS_PASSWORD }}
+          port: 22
+          script: |
+            powershell.exe -Command "Start-Process -FilePath 'C:\\Users\\${{ secrets.WINDOWS_USERNAME }}\\Desktop\\installation-files_2023.11.5_TeamCity-2023.11.5.exe' -ArgumentList '/S' -Wait"
+
+      - name: Done
+        run: echo "Docker and TeamCity setup complete!"
