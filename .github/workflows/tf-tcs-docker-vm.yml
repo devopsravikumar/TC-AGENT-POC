@@ -36,10 +36,23 @@ jobs:
     #       }
 
       - name: Download MCR Offline Installer from GCS
+        shell: pwsh
         run: |
+          # Define paths
+          $gcloudPath = "C:\Program Files (x86)\Google\Cloud SDK\google-cloud-sdk\bin"
           $bucketPath = "gs://tc-agent-poc/mcr-offline"
           $localFolder = "$env:RUNNER_TEMP\mcr-offline"
-          & "C:\Program Files (x86)\Google\Cloud SDK\google-cloud-sdk\bin\gsutil.cmd" -m cp -r "$bucketPath/*" $localFolder
+
+          # Add Google Cloud SDK bin to PATH if not present
+          if (-not ($env:Path -split ";" | Where-Object { $_ -eq $gcloudPath })) {
+            Write-Host "Adding Google Cloud SDK to PATH."
+            $env:Path += ";$gcloudPath"
+          } else {
+            Write-Host "Google Cloud SDK bin already in PATH."
+          }
+
+          # Use gsutil directly
+          gsutil -m cp -r "$bucketPath/*" $localFolder
 
     #   - name: Download TeamCity Installer from GCS
     #     run: |
