@@ -1,71 +1,46 @@
-name: Install Docker + TeamCity Server + Agent
+name: TeamCity Deploy via GCS
 
 on:
-  push:
-    branches:
-     - tc-agent-poc
+  workflow_dispatch:
 
 jobs:
-  install-teamcity:
-    runs-on: windows-latest
+  upload-compose-and-trigger:
+    runs-on: ubuntu-latest
 
     env:
       GCP_ZONE: us-central1-a
+      GCS_BUCKET: tc-agent-poc  # <-- CHANGE THIS TO YOUR BUCKET NAME
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Authenticate to Google Cloud using service account key
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v1
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      # Install gcloud CLI
-      - name: Setup gcloud CLI
-        uses: google-github-actions/setup-gcloud@v1
-
-      # Optional: List VMs for debug
-      - name: List all VMs in project/zone
+      - name: Upload Compose file to GCS
         run: |
-          gcloud compute instances list --filter="name=('teamcity-vm')"
+          gsutil cp ./teamcity-compose.yml gs://${{ env.GCS_BUCKET }}/teamcity-compose.yml
 
-      # Get TeamCity VM External IP
       - name: Get TeamCity VM External IP
         id: get_ip
-        shell: pwsh
         run: |
-          $ip = (gcloud compute instances describe teamcity-vm --zone=${{ env.GCP_ZONE }} --format="value(networkInterfaces[0].accessConfigs[0].natIP)")
-          echo "ip=$ip" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          export IP=$(gcloud compute instances describe teamcity-vm --zone=${GCP_ZONE} --format="value(networkInterfaces[0].accessConfigs[0].natIP)")
+          echo "ip=$IP" >> $GITHUB_OUTPUT
 
-      # Copy Docker Compose file to VM using SMB (requires firewall/SMB enabled)
-      - name: Copy Docker Compose File to VM
-        shell: pwsh
+      # Optionally: Remotely trigger file download and docker compose on Windows VM via WinRM/SSH
+      # Or, instruct user to run the following on the VM (best for cloud-init/startup.ps1):
+
+      - name: Output VM PowerShell instructions
         run: |
-          $vmIp = "${{ steps.get_ip.outputs.ip }}"
-          $user = "Administrator"
-          $password = "${{ secrets.WINDOWS_VM_PASSWORD }}"
+          echo 'On the Windows VM, run the following PowerShell to download and launch TeamCity:'
+          echo ''
+          echo 'gsutil cp gs://${{ env.GCS_BUCKET }}/teamcity-compose.yml C:\teamcity-compose.yml'
+          echo 'docker compose -f C:\teamcity-compose.yml up -d'
+          echo ''
+          echo 'Or, add these to your startup.ps1!'
 
-          net use \\$vmIp\C$ $password /user:$user
-          copy .\teamcity-compose.yml \\$vmIp\C$\teamcity-compose.yml
+      # If you have WinRM configured and want to automate the remote execution, add the relevant WinRM action here.
 
-      # Run Docker Compose on VM (via SchTasks)
-      - name: Run Docker Compose on VM (using SchTasks)
-        shell: pwsh
-        run: |
-          $vmIp = "${{ steps.get_ip.outputs.ip }}"
-          $user = "Administrator"
-          $password = "${{ secrets.WINDOWS_VM_PASSWORD }}"
-
-          schtasks /S $vmIp /U $user /P $password /Create /TN "TeamCityInstall" `
-            /TR "powershell -Command 'docker compose -f C:\teamcity-compose.yml up -d'" `
-            /SC ONCE /ST 00:00 /F
-
-      # Clean up admin share mapping
-      - name: Clean up admin share mapping
-        if: always()
-        shell: pwsh
-        run: |
-          $vmIp = "${{ steps.get_ip.outputs.ip }}"
-          net use \\$vmIp\C$ /delete

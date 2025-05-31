@@ -1,12 +1,13 @@
-# Install Docker
-Invoke-WebRequest -UseBasicParsing -OutFile install-docker.ps1 `
-  https://download.docker.com/win/static/stable/x86_64/docker-20.10.24.zip
+# Install gsutil if not already installed
+if (!(Get-Command gsutil -ErrorAction SilentlyContinue)) {
+    # Download and install gsutil (from Google Cloud SDK)
+    Invoke-WebRequest -Uri "https://dl.google.com/dl/cloudsdk/channels/rapid/GoogleCloudSDKInstaller.exe" -OutFile "$env:TEMP\GoogleCloudSDKInstaller.exe"
+    Start-Process -Wait "$env:TEMP\GoogleCloudSDKInstaller.exe" -ArgumentList "/S"
+    $env:Path += ";$Env:ProgramFiles\Google\Cloud SDK\google-cloud-sdk\bin"
+}
 
-Expand-Archive docker-20.10.24.zip -DestinationPath "C:\Docker"
-[Environment]::SetEnvironmentVariable("Path", $env:Path + ";C:\Docker", [EnvironmentVariableTarget]::Machine)
+# Download Docker Compose file from GCS
+gsutil cp gs://tc-agent-poc/teamcity-compose.yml C:\teamcity-compose.yml
 
-Start-Process -FilePath "C:\Docker\dockerd.exe" -WindowStyle Hidden
-
-# Enable firewall rules
-Enable-NetFirewallRule -DisplayGroup "File and Printer Sharing"
-Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+# Run Docker Compose
+docker compose -f C:\teamcity-compose.yml up -d
