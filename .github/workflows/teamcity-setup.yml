@@ -1,6 +1,6 @@
 name: Setup Docker and TeamCity Server+Agent on GCP VM via WinRM
 
-# on:
+on:
   push:
     branches:
      - tc-agent-poc
