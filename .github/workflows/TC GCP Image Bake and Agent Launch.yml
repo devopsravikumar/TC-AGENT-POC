@@ -31,7 +31,7 @@ jobs:
       run: |
         gcloud compute instances stop teamcity-vm \
           --zone=us-central1-a \
-          --project=teamcity-windows-poc
+          --project=teamcity-windows-poc 
 
     - name: Create Custom Image from Base VM
       run: |
