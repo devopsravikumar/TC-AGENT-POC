@@ -1,0 +1,84 @@
+name: Install Docker and TeamCity on Windows VM
+
+on:
+  push:
+    branches:
+      - tc-agent-poc
+
+jobs:
+  install-software:
+    runs-on: windows-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      # Authenticate to GCP using WIF
+      - name: Authenticate to GCP using WIF
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: 'projects/315696147629/locations/global/workloadIdentityPools/gha-pool/providers/github-actions'
+          service_account: 'gha-runner-sa@teamcity-windows-poc.iam.gserviceaccount.com'
+
+      # Install Docker on Windows VM via WinRM
+      - name: Install Docker on Windows VM
+        shell: pwsh
+        env:
+          VM_IP: ${{ secrets.VM_IP }}
+          VM_USER: ${{ secrets.VM_USERNAME }}
+          VM_PW: ${{ secrets.VM_PASSWORD }}
+        run: |
+          $secPw = ConvertTo-SecureString $env:VM_PW -AsPlainText -Force
+          $cred = New-Object System.Management.Automation.PSCredential ($env:VM_USER, $secPw)
+          Invoke-Command -ComputerName $env:VM_IP -Credential $cred -ScriptBlock {
+            Write-Host "Running Docker installer..."
+            & "C:\Users\ravikumar1979\Desktop\install-docker.ps1"
+          }
+
+      # Install TeamCity Server via WinRM
+      - name: Install TeamCity Server
+        shell: pwsh
+        env:
+          VM_IP: ${{ secrets.VM_IP }}
+          VM_USER: ${{ secrets.VM_USERNAME }}
+          VM_PW: ${{ secrets.VM_PASSWORD }}
+        run: |
+          $secPw = ConvertTo-SecureString $env:VM_PW -AsPlainText -Force
+          $cred = New-Object System.Management.Automation.PSCredential ($env:VM_USER, $secPw)
+          Invoke-Command -ComputerName $env:VM_IP -Credential $cred -ScriptBlock {
+            Write-Host "Installing TeamCity Server silently..."
+            Start-Process -FilePath "C:\Users\ravikumar1979\Desktop\installation-files_2023.11.5_TeamCity-2023.11.5.exe" -ArgumentList "/S /D=C:\TeamCity" -Wait
+          }
+
+      # Verify Docker Installation
+      - name: Verify Docker Installation
+        shell: pwsh
+        env:
+          VM_IP: ${{ secrets.VM_IP }}
+          VM_USER: ${{ secrets.VM_USERNAME }}
+          VM_PW: ${{ secrets.VM_PASSWORD }}
+        run: |
+          $secPw = ConvertTo-SecureString $env:VM_PW -AsPlainText -Force
+          $cred = New-Object System.Management.Automation.PSCredential ($env:VM_USER, $secPw)
+          Invoke-Command -ComputerName $env:VM_IP -Credential $cred -ScriptBlock {
+            docker --version
+            Get-Service -Name "docker"
+          }
+
+      # Verify TeamCity Server Service
+      - name: Verify TeamCity Server Service
+        shell: pwsh
+        env:
+          VM_IP: ${{ secrets.VM_IP }}
+          VM_USER: ${{ secrets.VM_USERNAME }}
+          VM_PW: ${{ secrets.VM_PASSWORD }}
+        run: |
+          $secPw = ConvertTo-SecureString $env:VM_PW -AsPlainText -Force
+          $cred = New-Object System.Management.Automation.PSCredential ($env:VM_USER, $secPw)
+          Invoke-Command -ComputerName $env:VM_IP -Credential $cred -ScriptBlock {
+            Get-Service -Name "TeamCity*" | Select-Object Status, Name, DisplayName
+          }

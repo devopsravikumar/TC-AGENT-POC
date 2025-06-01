@@ -1,9 +1,9 @@
 name: Install MCR and TeamCity on Windows VM
 
-on:
-  push:
-    branches:
-     - tc-agent-poc
+# on:
+#   push:
+#     branches:
+#      - tc-agent-poc
 
 permissions:
   contents: read
