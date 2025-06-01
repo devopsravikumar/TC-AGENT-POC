@@ -8,7 +8,7 @@ on:
 jobs:
   bake-and-launch:
     name: Bake Image and Launch Agent
-    runs-on: windows-server-2022-dc-v20250514
+    runs-on: windows-latest
 
     permissions:
       contents: read
