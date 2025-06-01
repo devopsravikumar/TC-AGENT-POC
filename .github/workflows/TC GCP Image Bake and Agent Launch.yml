@@ -1,9 +1,9 @@
 name: TeamCity GCP Image Bake and Agent Launch
 
-on:
-  push:
-    branches:
-      - tc-agent-poc
+# on:
+#   push:
+#     branches:
+#       - tc-agent-poc
 
 jobs:
   bake-and-launch:
