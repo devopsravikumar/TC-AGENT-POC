@@ -40,7 +40,7 @@ jobs:
           AGENT_NAME: ${{ github.event.inputs.agent_name }}
           IMAGE_NAME: 'teamcity-win2022-full-image'  # <--- your image
           IMAGE_PROJECT: ${{ secrets.GCP_PROJECT_ID }}
-          TC_SERVER_IP: ${{ secrets.TC_SERVER_IP }}
+          TC_SERVER_IP: ${{ secrets.TC_SERVER_IP }} # <--- Internal IP
         run: |
           VM_NAME=${AGENT_NAME:-gha-docker-agent}-$RANDOM
           echo "VM_NAME=$VM_NAME" >> $GITHUB_ENV
