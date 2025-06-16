@@ -3,7 +3,7 @@ name: Deploy Windows VM with Docker via Terraform
 on:
   push:
     branches:
-      - main
+      - vm-docker-install-poc
 
 permissions:
   contents: read
