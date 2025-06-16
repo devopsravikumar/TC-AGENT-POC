@@ -1,9 +1,3 @@
-provider "google" {
-  project = var.project_id
-  region  = var.region
-  zone    = var.zone
-}
-
 resource "google_compute_instance" "win_vm" {
   name         = var.instance_name
   machine_type = var.machine_type
@@ -28,7 +22,10 @@ resource "google_compute_instance" "win_vm" {
     scopes = ["cloud-platform"]
   }
 
-  metadata_startup_script_ps1 = file("${path.module}/install-docker-with-auto-start.ps1")
+  metadata = {
+    windows-startup-script-ps1 = file("${path.module}/install-docker-with-auto-start.ps1")
+  }
 
   tags = ["rdp", "winrm", "docker"]
 }
+
