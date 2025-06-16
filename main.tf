@@ -29,8 +29,10 @@ resource "google_compute_instance" "win_vm" {
   }
 
   metadata = {
-  windows-startup-script-url = "https://storage.googleapis.com/tc-agent-poc/install-docker-with-auto-reboot.ps1"
-}
+    windows-startup-script-ps1 = <<-EOT
+      powershell.exe -ExecutionPolicy Bypass -Command "Invoke-WebRequest -Uri 'https://storage.googleapis.com/${var.gcs_bucket}/install-docker-with-auto-start.ps1' -OutFile 'C:\\docker-startup.ps1'; Start-Process powershell.exe -ArgumentList '-ExecutionPolicy Bypass -File C:\\docker-startup.ps1'"
+    EOT
+  }
 
   tags = ["rdp", "winrm", "docker"]
 }
