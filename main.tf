@@ -22,9 +22,9 @@ resource "google_compute_instance" "win_vm" {
     scopes = ["cloud-platform"]
   }
 
-  metadata = {
-    windows-startup-script-ps1 = file("${path.module}/install-docker-with-auto-start.ps1")
-  }
+  # # metadata = {
+  # #   windows-startup-script-ps1 = file("${path.module}/install-docker-with-auto-start.ps1")
+  # }
 
   tags = ["rdp", "winrm", "docker"]
 }
