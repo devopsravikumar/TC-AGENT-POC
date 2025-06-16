@@ -33,13 +33,10 @@ jobs:
       uses: google-github-actions/setup-gcloud@v2
 
     - name: Terraform Init
-      working-directory: ./infra
       run: terraform init
 
     - name: Terraform Plan
-      working-directory: ./infra
       run: terraform plan -out=tfplan
 
     - name: Terraform Apply
-      working-directory: ./infra
       run: terraform apply -auto-approve tfplan
