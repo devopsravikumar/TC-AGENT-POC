@@ -1,26 +1,10 @@
-variable "project_id" {
-  description = "The GCP project ID"
-  type        = string
-}
-
-variable "region" {
-  description = "The GCP region"
-  type        = string
-  default     = "us-central1"
-}
-
-variable "zone" {
-  description = "The GCP zone"
-  type        = string
-  default     = "us-central1-a"
-}
-
-variable "service_account_email" {
-  description = "Service account email for the VM"
-  type        = string
-}
-
-variable "password" {
-  description = "Service account email for the VM"
-  type        = string
-}
+variable "project_id" {}
+variable "region" {}
+variable "zone" {}
+variable "instance_name" {}
+variable "machine_type" {}
+variable "image" {}
+variable "network" {}
+variable "subnet" {}
+variable "service_account" {}
+variable "gcs_bucket" {}
