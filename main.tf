@@ -28,18 +28,11 @@ resource "google_compute_instance" "docker_vm" {
 
   tags = var.tags
 
-  metadata_startup_script = file("install-docker-ce-with-autostart.ps1")
-
   metadata = {
-    windows-startup-script-ps1 = <<-EOT
-      net user Administrator "${var.admin_password}"
-      netsh advfirewall firewall set rule group="remote desktop" new enable=Yes
-      powershell -ExecutionPolicy Bypass -File install-docker-ce-with-autostart.ps1
-    EOT
+    windows-startup-script-ps1 = file("install-docker-ce-with-autostart.ps1")
   }
 }
 
 output "vm_instance_name" {
   value = google_compute_instance.docker_vm.name
 }
-

@@ -1,7 +1,7 @@
 project         = "teamcity-windows-poc"
 region          = "us-central1"
 zone            = "us-central1-a"
-instance_name   = "docker-vm-win"
+instance_name   = "docker-vm-auto"
 machine_type    = "n2-standard-4"
 image           = "projects/windows-cloud/global/images/family/windows-2022"
 network         = "default"
