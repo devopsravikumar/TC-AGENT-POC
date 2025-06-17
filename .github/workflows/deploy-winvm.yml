@@ -11,11 +11,11 @@ permissions:
 
 jobs:
   deploy:
-    name: Terraform Apply
     runs-on: ubuntu-latest
+    name: Terraform Deploy to GCP
 
     steps:
-    - name: Checkout Code
+    - name: Checkout repository
       uses: actions/checkout@v3
 
     - name: Set up Terraform
@@ -36,7 +36,7 @@ jobs:
       run: terraform init
 
     - name: Terraform Plan
-      run: terraform plan -out=tfplan
+      run: terraform plan -var-file="terraform.tfvars" -out=tfplan
 
     - name: Terraform Apply
       run: terraform apply -auto-approve tfplan
